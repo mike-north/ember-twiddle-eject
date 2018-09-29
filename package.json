@@ -1,7 +1,7 @@
 {
   "name": "ember-twiddle-eject",
   "version": "0.0.0",
-  "description": "A brand new TypeScript library.",
+  "description": "Convert your ember-twiddle gist into a full ember app",
   "main": "dist/commonjs/src/index.js",
   "module": "dist/modules/src/index.js",
   "types": "dist/types/src/index.d.ts",
@@ -11,6 +11,7 @@
   "keywords": [
     "ember-addon"
   ],
+  "bin": "./bin/twiddle-eject",
   "author": "Mike North <michael.l.north@gmail.com> (https://mike.works)",
   "scripts": {
     "problems": "node ./scripts/problems.js",
