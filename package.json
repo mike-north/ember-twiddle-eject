@@ -28,18 +28,23 @@
   "license": "MIT",
   "devDependencies": {
     "@mike-north/js-lib-semantic-release-config": "^0.0.0-development",
+    "@types/commander": "^2.12.2",
+    "@types/inquirer": "^0.0.43",
     "@types/qunit": "^2.0.31",
     "ember-cli": "^3.1.4",
     "libkit": "^0.7.0-beta.2",
     "qunit": "^2.4.1",
+    "semantic-release": "^15.9.16",
     "shelljs": "^0.7.8",
-    "tslint": "^5.7.0",
-    "typescript": "^3.1.0",
     "travis-deploy-once": "^5.0.9",
-    "semantic-release": "^15.9.16"
+    "ts-node": "^7.0.1",
+    "tslint": "^5.7.0",
+    "typescript": "^3.1.0"
   },
   "dependencies": {
     "chalk": "^2.4.1",
+    "commander": "^2.18.0",
+    "inquirer": "^6.2.0",
     "ts-std": "^0.6.2"
   },
   "repository": {
