@@ -28,11 +28,11 @@
   "license": "MIT",
   "devDependencies": {
     "@mike-north/js-lib-semantic-release-config": "^0.0.0-development",
+    "@types/adm-zip": "^0.4.32",
     "@types/commander": "^2.12.2",
     "@types/inquirer": "^0.0.43",
     "@types/qunit": "^2.0.31",
-    "@types/adm-zip": "^0.4.32",
-    "@types/request": "^2.48.1",
+    "@types/node-fetch": "^2.3.0",
     "ember-cli": "^3.1.4",
     "libkit": "^0.7.0-beta.2",
     "qunit": "^2.4.1",
@@ -48,7 +48,7 @@
     "chalk": "^2.4.1",
     "commander": "^2.18.0",
     "inquirer": "^6.2.0",
-    "request": "^2.88.0",
+    "node-fetch": "^2.3.0",
     "ts-std": "^0.6.2"
   },
   "repository": {
