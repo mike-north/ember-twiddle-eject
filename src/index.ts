@@ -1,12 +1,23 @@
 import * as AdmZip from 'adm-zip';
 import * as fs from 'fs';
+import { readJSONSync } from 'fs-extra';
 import fetch from 'node-fetch';
+import * as path from 'path';
+import * as semver from 'semver';
 import * as URL from 'url';
 
 const TWIDDLE_DOMAIN = 'ember-twiddle.com';
 const GIST_DOMAIN = 'gist.github.com';
 const GIT_DOMAIN = 'github.com';
 const ALLOWED_TWIDDLE_DOMAINS = [TWIDDLE_DOMAIN, GIST_DOMAIN];
+
+interface GitTag {
+  name: string;
+  zipball_url: string;
+  commit: {
+    sha: string;
+  };
+}
 
 /**
  * Ensure that a string is a URL that corresponds to a twiddle
@@ -42,15 +53,15 @@ function gistIdFromTwiddleUrl(twiddleUrl: string): string {
 }
 
 /**
- * Given a path, generate single or multi level directory.
- * @param path
+ * Given a dirPath, generate single or multi level directory.
+ * @param dirPath
  */
-function generateDir(path: string) {
-  const fullPath = path.split('/').reduce((accumulator, current) => {
+function generateDir(dirPath: string) {
+  const fullPath = dirPath.split('/').reduce((accumulator, current) => {
     if (!fs.existsSync(accumulator)) {
       fs.mkdirSync(accumulator);
     }
-    return `${accumulator}/${current}`;
+    return path.join(accumulator, current);
   });
   if (!fs.existsSync(fullPath)) {
     fs.mkdirSync(fullPath);
@@ -67,20 +78,19 @@ async function unzipAndExtractFromUrl(gistUrl: string, filePath: string, targetD
   const gistLink = await fetch(gistUrl).then(res => res.url);
   const gistDataUrl = `${gistLink}/${filePath}`;
   const newZip = new AdmZip();
-  const gistData = await fetch(gistDataUrl)
-    .then(x => x.arrayBuffer())
-    .then(x => Buffer.from(x));
+  const gistResponse = await fetch(gistDataUrl);
+  const gistData = Buffer.from(await gistResponse.arrayBuffer());
   const zip = new AdmZip(gistData);
   const zipEntries = zip.getEntries();
 
   zipEntries.forEach(zipEntry => {
     const fileName = zipEntry.entryName;
-    const fileContent = zip.readAsText(fileName);
+    const fileContent = Buffer.from(zip.readAsText(fileName), 'utf-8');
     // Here remove the top level directory
     const newFileName = fileName.substring(fileName.indexOf('/') + 1);
 
     // tslint:disable-next-line: no-bitwise
-    newZip.addFile(newFileName, (fileContent as unknown) as Buffer, '', 0o644 << 16);
+    newZip.addFile(newFileName, fileContent, '', 0o644 << 16);
   });
 
   // Generate the project root directory.
@@ -97,9 +107,13 @@ async function unzipAndExtractFromUrl(gistUrl: string, filePath: string, targetD
  * @param fileName
  */
 function getJsonFileData(targetDir: string, fileName: string) {
-  const file = `${targetDir}/${fileName}.json`;
-  const twiddleData = JSON.parse(fs.readFileSync(file, 'utf8'));
-  return twiddleData;
+  // const file = `${targetDir}/${fileName}.json`;
+  const file = path.join(targetDir, `${fileName}.json`);
+  try {
+    return readJSONSync(file);
+  } catch (err) {
+    throw err;
+  }
 }
 
 /**
@@ -107,25 +121,25 @@ function getJsonFileData(targetDir: string, fileName: string) {
  * @param targetDir
  */
 function normalizeTwiddle(targetDir: string) {
-  const appDir = `${targetDir}/app`;
+  const appDir = path.join(targetDir, 'app');
   generateDir(appDir);
   const files = fs.readdirSync(targetDir);
   for (let i in files) {
     const file = files[i];
     const dirPath = file.split('.');
     const fileName = dirPath.splice(-2, 2);
-    const newPath = `${appDir}/${dirPath.join('/')}`;
-    const filePath = `${newPath}/${fileName.join('.')}`;
+    const newPath = path.join(appDir, ...dirPath);
+    const filePath = path.join(newPath, fileName.join('.'));
     // If the file parts length is more than 2 then there is a directory structure expected.
     if (file.split('.').length > 2) {
-      generateDir(`${appDir}/${dirPath.join('/')}`);
+      generateDir(path.join(appDir, ...dirPath));
     }
     if (fileName.length === 2 && fs.existsSync(newPath)) {
       try {
         if (fs.existsSync(filePath)) {
           continue;
         } else {
-          fs.renameSync(`${targetDir}/${file}`, filePath);
+          fs.renameSync(path.join(targetDir, file), filePath);
         }
       } catch (err) {
         throw err;
@@ -134,6 +148,19 @@ function normalizeTwiddle(targetDir: string) {
   }
 }
 
+async function getLatestEmberVersion(verString: string) {
+  const response = await fetch('https://api.github.com/repos/ember-cli/ember-new-output/tags?per_page=300');
+  const responseJson = await response.json();
+  const ver = semver.parse(verString);
+  const verMap = new Map<semver.SemVer, GitTag>(responseJson.map((tag: GitTag) => [semver.parse(tag.name), tag]));
+  if (ver) {
+    const bestVer = semver.maxSatisfying([...verMap.keys()], `${ver.major}.${ver.minor}`);
+    if (bestVer) {
+      return verMap.get(bestVer);
+    }
+  }
+  throw new Error('The version does not exist');
+}
 /**
  * Augment the already generated ember-like twiddle project app into a real ember app
  * by augmenting the real Ember app's structure on top of the twiddle app.
@@ -142,30 +169,35 @@ function normalizeTwiddle(targetDir: string) {
  */
 async function augmentEmberApp(twiddleData: any, projectName: string) {
   const twiddleItem = JSON.parse(JSON.stringify(twiddleData));
-  const emberVersion = twiddleItem.dependencies.ember.split('.');
-  emberVersion.pop();
-  const emberAppDir = await unzipAndExtractFromUrl(
-    `https://${GIT_DOMAIN}/ember-cli/ember-new-output`,
-    `archive/v${emberVersion.join('.')}.0.zip`,
-    `./${projectName}`
-  );
-  if (emberAppDir) {
-    const packageData = getJsonFileData(emberAppDir, 'package');
-    const packageDevDep = packageData.devDependencies;
-    const twiddleAddons = twiddleData.addons;
-    let isDevDependencyInTwiddle = false;
-    Object.keys(twiddleAddons).forEach(item => {
-      if (!packageDevDep.hasOwnProperty(item)) {
-        isDevDependencyInTwiddle = true;
-        packageDevDep[item] = twiddleAddons[item];
+  const latestEmberVersion = await getLatestEmberVersion(twiddleItem.dependencies.ember);
+  if (latestEmberVersion) {
+    const emberAppDir = await unzipAndExtractFromUrl(
+      `https://${GIT_DOMAIN}/ember-cli/ember-new-output`,
+      `archive/${latestEmberVersion.name}.zip`,
+      path.join('.', projectName)
+    );
+    if (emberAppDir) {
+      const packageData = getJsonFileData(emberAppDir, 'package');
+      const packageDevDep = packageData.devDependencies;
+      const twiddleAddons = twiddleData.addons;
+      let isDevDependencyInTwiddle = false;
+      Object.keys(twiddleAddons).forEach(item => {
+        if (!packageDevDep.hasOwnProperty(item)) {
+          isDevDependencyInTwiddle = true;
+          packageDevDep[item] = twiddleAddons[item];
+        }
+      });
+      // If there are dev dependencies present in twiddle, add them to the package json of the newly generated ember app.
+      if (isDevDependencyInTwiddle) {
+        fs.writeFileSync(path.join(emberAppDir, 'package.json'), JSON.stringify(packageData));
       }
-    });
-    // If there are dev dependencies present in twiddle, add them to the package json of the newly generated ember app.
-    if (isDevDependencyInTwiddle) {
-      fs.writeFileSync(`${emberAppDir}/package.json`, JSON.stringify(packageData));
+      // tslint:disable-next-line:no-console
+      console.log('Project converted succesfully!');
+    } else {
+      throw new Error('Something went wrong while extracting and building the Ember app');
     }
-    // tslint:disable-next-line:no-console
-    console.log('Project converted succesfully!');
+  } else {
+    throw new Error('Something went wrong while fetching the latest Ember version');
   }
 }
 
@@ -180,7 +212,7 @@ export default async function twiddleEject(twiddleUrl: string, projectName: stri
   const targetDir = await unzipAndExtractFromUrl(
     `https://${GIST_DOMAIN}/${gistId}`,
     'archive/HEAD.zip',
-    `./${projectName}`
+    path.join('.', projectName)
   );
   // tslint:disable-next-line:no-console
   console.log('the target dir', targetDir);
