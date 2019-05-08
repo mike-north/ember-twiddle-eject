@@ -92,13 +92,15 @@ async function unzipAndExtractFromUrl(gistUrl: string, filePath: string, targetD
  * @param fileName
  */
 function getJsonFileData(targetDir: string, fileName: string) {
-  // const file = `${targetDir}/${fileName}.json`;
   const file = path.join(targetDir, `${fileName}.json`);
-  try {
-    return readJSONSync(file);
-  } catch (err) {
-    throw err;
-  }
+  return readJSONSync(file);
+}
+
+function getFilePath(file: string, appDir: string) {
+  const dirPath = file.split('.');
+  const fileName = dirPath.splice(-2, 2);
+  const newPath = path.join(appDir, ...dirPath);
+  return { filePath: path.join(newPath, fileName.join('.')), dirPath, fileName, newPath };
 }
 
 /**
@@ -112,10 +114,7 @@ function normalizeTwiddle(targetDir: string) {
   for (let i in files) {
     if (files.hasOwnProperty(i)) {
       const file = files[i];
-      const dirPath = file.split('.');
-      const fileName = dirPath.splice(-2, 2);
-      const newPath = path.join(appDir, ...dirPath);
-      const filePath = path.join(newPath, fileName.join('.'));
+      const { filePath, dirPath, fileName, newPath } = getFilePath(file, appDir);
       // If the file parts length is more than 2 then there is a directory structure expected.
       if (file.split('.').length > 2) {
         mkdirsSync(path.join(appDir, ...dirPath));
