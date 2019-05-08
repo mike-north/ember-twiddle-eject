@@ -156,8 +156,8 @@ async function getLatestEmberVersion(verString: string, accessToken: string | un
  * @param projectName
  */
 async function augmentEmberApp(twiddleData: any, projectName: string, accessToken: string | undefined) {
-  const twiddleItem = JSON.parse(JSON.stringify(twiddleData));
-  const latestEmberVersion = await getLatestEmberVersion(twiddleItem.dependencies.ember, accessToken);
+  const twiddleDependencies = { ...twiddleData.dependencies };
+  const latestEmberVersion = await getLatestEmberVersion(twiddleDependencies.ember, accessToken);
   if (latestEmberVersion) {
     const emberAppDir = await unzipAndExtractFromUrl(
       `https://${GIT_DOMAIN}/ember-cli/ember-new-output`,
