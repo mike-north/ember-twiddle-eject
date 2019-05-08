@@ -110,24 +110,22 @@ function normalizeTwiddle(targetDir: string) {
   mkdirsSync(appDir);
   const files = fs.readdirSync(targetDir);
   for (let i in files) {
-    const file = files[i];
-    const dirPath = file.split('.');
-    const fileName = dirPath.splice(-2, 2);
-    const newPath = path.join(appDir, ...dirPath);
-    const filePath = path.join(newPath, fileName.join('.'));
-    // If the file parts length is more than 2 then there is a directory structure expected.
-    if (file.split('.').length > 2) {
-      mkdirsSync(path.join(appDir, ...dirPath));
-    }
-    if (fileName.length === 2 && fs.existsSync(newPath)) {
-      try {
+    if (files.hasOwnProperty(i)) {
+      const file = files[i];
+      const dirPath = file.split('.');
+      const fileName = dirPath.splice(-2, 2);
+      const newPath = path.join(appDir, ...dirPath);
+      const filePath = path.join(newPath, fileName.join('.'));
+      // If the file parts length is more than 2 then there is a directory structure expected.
+      if (file.split('.').length > 2) {
+        mkdirsSync(path.join(appDir, ...dirPath));
+      }
+      if (fileName.length === 2 && fs.existsSync(newPath)) {
         if (fs.existsSync(filePath)) {
           continue;
         } else {
           fs.renameSync(path.join(targetDir, file), filePath);
         }
-      } catch (err) {
-        throw err;
       }
     }
   }
