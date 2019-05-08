@@ -31,10 +31,10 @@
     "@types/adm-zip": "^0.4.32",
     "@types/commander": "^2.12.2",
     "@types/fs-extra": "^5.0.5",
-    "@types/semver": "^6.0.0",
     "@types/inquirer": "^0.0.43",
     "@types/node-fetch": "^2.3.0",
     "@types/qunit": "^2.0.31",
+    "@types/semver": "^6.0.0",
     "ember-cli": "^3.1.4",
     "libkit": "^0.7.0-beta.2",
     "qunit": "^2.4.1",
@@ -46,6 +46,8 @@
     "typescript": "^3.1.0"
   },
   "dependencies": {
+    "@types/debug": "^4.1.4",
+    "@types/ora": "^3.2.0",
     "adm-zip": "^0.4.13",
     "chalk": "^2.4.1",
     "commander": "^2.18.0",

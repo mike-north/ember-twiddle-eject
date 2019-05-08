@@ -11,8 +11,8 @@ commander
     twiddleUrl = twUrl;
     projectName = prName;
   })
+  .option('-t, --access-token <token>')
   .parse(process.argv);
-
 if (typeof twiddleUrl === 'undefined' || typeof projectName === 'undefined') {
   if (typeof twiddleUrl === 'undefined') {
     process.stderr.write(chalk.red('ERROR: no twiddle URL given!') + '\n');
@@ -26,4 +26,4 @@ if (typeof twiddleUrl === 'undefined' || typeof projectName === 'undefined') {
 
 process.stdout.write('Twiddle URL: ' + chalk.green(twiddleUrl) + '\n');
 process.stdout.write('New Project Name: ' + chalk.green(projectName) + '\n');
-twiddleEject(twiddleUrl, projectName);
+twiddleEject(twiddleUrl, projectName, { accessToken: commander.accessToken });
